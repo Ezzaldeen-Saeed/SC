@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Call Monitor · كونسول الموظف اللحظي</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Shared SCM infrastructure (theme, i18n, notifications, palette, PDF, CSV, settings) -->
+  <script src="../assets/scm-ui.js"></script>
+  <!-- Charts (history-tab analytics) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+  <script src="../assets/scm-charts.js" defer></script>
+
+  <link rel="stylesheet" href="agent.css">
+</head>
+<body data-call-state="offline">
+
+  <!-- ════════════════ TOPBAR — glass ════════════════ -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark"><i class="fas fa-microphone-lines"></i></div>
+      <div class="brand-text"><b>Smart Call Monitor</b><small>كونسول الموظف اللحظي</small></div>
+    </div>
+
+    <button class="global-search" onclick="SCM.openPalette && SCM.openPalette()" data-scm-noi18n>
+      <i class="fas fa-magnifying-glass"></i>
+      <span class="gs-label">بحث أو إجراء…</span>
+      <span class="kbd">Ctrl K</span>
+    </button>
+
+    <div class="topbar-spacer"></div>
+
+    <div class="topbar-actions">
+      <span class="stat-chip hide-sm" title="مدة المكالمة"><i class="fas fa-stopwatch"></i><span id="duration-val">00:00</span></span>
+      <span class="stat-chip hide-sm" title="أسطر التفريغ"><i class="fas fa-align-left"></i><span id="lines-val">0 سطر</span></span>
+      <span class="status-pill" id="status-badge" data-state="offline"><span class="sp-dot"></span><span id="status-text">غير متصل</span></span>
+      <button class="icon-btn" onclick="SCM.openSettings()" title="الإشعارات والإعدادات"><i class="fas fa-bell"></i></button>
+      <button class="icon-btn" id="themeBtn" onclick="SCM.toggleTheme()" title="السمة"><i class="fas fa-moon"></i></button>
+      <button class="profile-chip" id="profileChip">
+        <span class="pc-av" id="agentAvatar">A</span>
+        <span class="pc-name" id="chipName">الموظف<small id="chipRole">وكيل</small></span>
+        <i class="fas fa-chevron-down" style="font-size:.7rem;color:var(--muted)"></i>
+      </button>
+    </div>
+
+    <div class="profile-menu" id="profileMenu">
+      <div class="pm-head">
+        <span class="pm-av" id="pmAvatar">A</span>
+        <div><b id="agentName" style="font-size:.9rem">الموظف</b><div class="cell-sub muted" id="agentMail" style="font-size:.76rem"></div></div>
+      </div>
+      <div class="pm-item" onclick="Agent.openProfileModal()"><i class="fas fa-user-pen"></i> ملفي الشخصي</div>
+      <div class="pm-item scm-settings-btn" onclick="SCM.openSettings()"><i class="fas fa-gear"></i> الإعدادات</div>
+      <div class="pm-item" onclick="SCM.toggleTheme()"><i class="fas fa-circle-half-stroke"></i> تبديل السمة</div>
+      <div class="pm-sep"></div>
+      <div class="pm-item danger" id="logout-btn"><i class="fas fa-arrow-right-from-bracket"></i> تسجيل خروج</div>
+    </div>
+  </header>
+
+  <main class="workspace">
+
+    <!-- ════════════════ COMPACT KPI STRIP ════════════════ -->
+    <div class="kpi-strip stagger">
+      <div class="kpi-card kc-primary">
+        <div class="kpi-ic"><i class="fas fa-phone-volume"></i></div>
+        <div class="kpi-body">
+          <span class="kpi-label">مكالماتي اليوم</span>
+          <span class="kpi-value" id="kpiToday">0</span>
+          <span class="kpi-foot">منذ بداية اليوم</span>
+        </div>
+        <div class="kpi-spark" id="sparkToday"></div>
+      </div>
+
+      <div class="kpi-card kc-state">
+        <div class="kpi-ic"><i class="fas fa-signal"></i></div>
+        <div class="kpi-body">
+          <span class="kpi-label">حالة الجلسة</span>
+          <span class="kpi-value" id="kpiState" style="font-size:1.15rem">غير متصل</span>
+          <span class="kpi-foot" id="kpiStateNote">اضغط «بدء الاتصال» للبدء</span>
+        </div>
+      </div>
+
+      <div class="kpi-card kc-ai">
+        <div class="kpi-ic"><i class="fas fa-star"></i></div>
+        <div class="kpi-body">
+          <span class="kpi-label">متوسط أدائي</span>
+          <span class="kpi-value" id="kpiAvg">—</span>
+          <span class="kpi-foot">من تقييم الذكاء الاصطناعي</span>
+        </div>
+        <div class="kpi-spark" id="sparkPerf"></div>
+      </div>
+
+      <div class="kpi-card kc-sky">
+        <div class="kpi-ic"><i class="fas fa-headset"></i></div>
+        <div class="kpi-body">
+          <span class="kpi-label">إجمالي مكالماتي</span>
+          <span class="kpi-value" id="kpiTotal">0</span>
+          <span class="kpi-foot">كل المكالمات المحفوظة</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ WORKSPACE TABS ════════════════ -->
+    <nav class="ws-tabs" id="wsTabs" role="tablist">
+      <button class="ws-tab active" data-tab="tab-live" role="tab"><i class="fas fa-tower-broadcast"></i><span>الكونسول المباشر</span><span class="tab-live-dot"></span></button>
+      <button class="ws-tab" data-tab="tab-customer" role="tab"><i class="fas fa-user"></i><span>العميل والحفظ</span></button>
+      <button class="ws-tab" data-tab="tab-history" role="tab"><i class="fas fa-clock-rotate-left"></i><span>مكالماتي</span></button>
+      <button class="ws-tab" data-tab="tab-report" role="tab"><i class="fas fa-clipboard-check"></i><span>تقرير المكالمة</span><span class="tab-dot" id="reportTabDot" style="display:none"></span></button>
+      <button class="ws-tab" data-tab="tab-logs" role="tab"><i class="fas fa-terminal"></i><span>السجلات</span></button>
+      <button class="nav-kb-btn kb-trigger" type="button" title="قاعدة المعرفة والردود الجاهزة"><i class="fas fa-book-open"></i><span>الردود الجاهزة</span></button>
+    </nav>
+
+    <!-- ════════════════ DYNAMIC WORKSPACE ════════════════ -->
+    <div class="ws-panels">
+
+      <!-- ───── TAB: LIVE CALL (default) ───── -->
+      <section class="ws-pane active" id="tab-live" role="tabpanel">
+        <section class="call-hero" id="callHero" data-state="offline">
+          <div class="call-hero-inner">
+            <div class="ch-status">
+              <div class="ch-orb" id="chOrb"><i class="fas fa-plug-circle-xmark"></i></div>
+              <div class="ch-text">
+                <span class="ch-eyebrow" id="chEyebrow"><span class="live-rec"><span class="rec-dot"></span> REC</span><span id="chEyebrowText">غير متصل</span></span>
+                <h1 id="chTitle">الكونسول غير متصل</h1>
+                <p id="chSub">اضغط «بدء الاتصال» لتشغيل التحليل اللحظي للمكالمات.</p>
+                <div class="ch-coach-status">
+                  <span class="ccs-label"><i class="fas fa-robot"></i> المدرّب الذكي</span>
+                  <span id="engineBadge" class="type-badge" style="display:none" title="محرك التحليل اللحظي"></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="ch-metrics">
+              <div class="ch-metric"><span>مدة المكالمة</span><b id="ch-timer">00:00</b></div>
+              <div class="ch-metric"><span>أسطر التفريغ</span><b id="ch-lines">0</b></div>
+              <div class="ch-metric ch-metric-eq">
+                <span>الصوت</span>
+                <div class="equalizer"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                <b id="ch-eqfallback">—</b>
+              </div>
+            </div>
+
+            <div class="ch-actions">
+              <button id="toggle-btn" class="btn btn-primary btn-lg"><i class="fas fa-play"></i> بدء الاتصال</button>
+              <button class="btn btn-ghost" data-tab-jump="tab-customer" title="بيانات العميل والحفظ"><i class="fas fa-user"></i> بيانات العميل</button>
+            </div>
+          </div>
+
+          <!-- Ambient waveform — animates only while live -->
+          <div class="ch-wave" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+        </section>
+
+        <!-- Customer context — appears once the caller's phone is recognised -->
+        <div id="custContext" class="cust-context" data-state="empty">
+          <div class="cc-empty"><i class="fas fa-address-card"></i> أدخِل رقم هاتف العميل في تبويب «العميل والحفظ» ليظهر سياقه وسِجلّه هنا قبل بدء الخدمة.</div>
+        </div>
+
+        <!-- The working cockpit: live transcript + AI coach, side by side -->
+        <div class="cockpit">
+          <div class="pane-card cockpit-col cockpit-tx">
+            <div class="pane-head">
+              <span class="ph-ic"><i class="fas fa-comment-dots"></i></span>
+              <div class="ph-text"><b>التفريغ النصي المباشر</b><small>نص المكالمة لحظة بلحظة</small></div>
+              <span class="live-dot" id="live-dot" title="مباشر"></span>
+            </div>
+            <div class="tx-toolbar">
+              <div class="tx-search"><i class="fas fa-magnifying-glass"></i><input id="txSearch" type="text" placeholder="بحث في التفريغ…"></div>
+              <div class="chips" id="txFilters">
+                <button class="chip on" data-speaker="all">الكل</button>
+                <button class="chip" data-speaker="agent">الموظف</button>
+                <button class="chip" data-speaker="customer">العميل</button>
+              </div>
+              <div class="ph-actions">
+                <button class="btn btn-soft btn-sm" id="txCopyBtn" title="نسخ التفريغ"><i class="fas fa-copy"></i></button>
+                <button class="btn btn-soft btn-sm" id="txDownloadBtn" title="تحميل كملف نصي"><i class="fas fa-download"></i></button>
+              </div>
+            </div>
+            <div id="transcript-box" class="content-box tx-feed">
+              <div class="empty-hint"><i class="fas fa-headset"></i> في انتظار بدء المكالمة…<br>سيظهر تفريغ الكلام هنا لحظيًا.</div>
+            </div>
+          </div>
+
+          <div class="pane-card cockpit-col cockpit-ai">
+            <div class="pane-head">
+              <span class="ph-ic ph-ai"><i class="fas fa-robot"></i></span>
+              <div class="ph-text"><b>المدرّب الذكي</b><small>مشاكل واقتراحات لحظية مصنّفة</small></div>
+              <button class="btn btn-soft btn-sm kb-trigger" type="button" title="الردود الجاهزة"><i class="fas fa-book"></i></button>
+            </div>
+            <div id="analysis-box" class="content-box ai-feed">
+              <div class="empty-hint"><i class="fas fa-lightbulb"></i> ستصلك مشاكل واقتراحات لحظية مصنّفة أثناء المكالمة لمساعدتك.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ───── TAB: CUSTOMER + SAVE ───── -->
+      <section class="ws-pane" id="tab-customer" role="tabpanel">
+        <div class="customer-grid">
+          <div class="pane-card">
+            <div class="pane-head">
+              <span class="ph-ic"><i class="fas fa-id-card"></i></span>
+              <div class="ph-text"><b>بيانات العميل</b><small>مطلوبة قبل الحفظ — اكتب الرقم ليظهر سِجلّه</small></div>
+              <span class="req-flag">إلزامي <span class="req">*</span></span>
+            </div>
+            <div class="pane-body">
+              <div class="field-row">
+                <div class="input-group"><label>اسم العميل <span class="req">*</span></label><input id="cust-name" type="text" placeholder="مثال: أحمد علي" autocomplete="off"></div>
+                <div class="input-group"><label>رقم هاتف العميل <span class="req">*</span></label><input id="cust-phone" type="text" dir="ltr" placeholder="05xxxxxxxx" autocomplete="off"></div>
+              </div>
+              <!-- Customer context appears here on lookup (also mirrored in the live cockpit) -->
+              <div class="cust-context cc-slot" data-state="empty">
+                <div class="cc-empty"><i class="fas fa-clock-rotate-left"></i> اكتب رقم العميل ليظهر سِجلّه وسياقه هنا.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pane-card">
+            <div class="pane-head">
+              <span class="ph-ic"><i class="fas fa-folder-open"></i></span>
+              <div class="ph-text"><b>تفاصيل المكالمة والإغلاق</b><small>راجِع النتيجة وأكمِل التصنيف قبل الحفظ</small></div>
+            </div>
+            <div class="pane-body">
+              <div class="field-row">
+                <div class="input-group"><label>نوع المكالمة</label>
+                  <select id="call-type-select">
+                    <option value="inquiry">استفسار</option><option value="complaint">شكوى</option><option value="support">دعم فني</option>
+                    <option value="sales">مبيعات</option><option value="follow_up">متابعة</option><option value="other">أخرى</option>
+                  </select>
+                </div>
+                <div class="input-group"><label>تصنيف المشكلة</label><input id="issues-category" type="text" placeholder="يُقترح تلقائيًا من التقرير"></div>
+              </div>
+              <!-- Wrap-up summary: the AI-determined outcome, so every call closes consistently -->
+              <div id="wrapupCard" class="wrapup" data-state="empty">
+                <div class="wu-empty"><i class="fas fa-clipboard-check"></i> بعد انتهاء المكالمة يظهر هنا ملخّص الإغلاق (النتيجة والتقييم) لمراجعته قبل الحفظ.</div>
+              </div>
+              <div class="save-hint"><i class="fas fa-circle-info"></i> زر «حفظ المكالمة» بالأسفل يحفظ بيانات العميل والتفريغ والتقرير معًا.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ───── TAB: CALL HISTORY + MY ANALYTICS ───── -->
+      <section class="ws-pane" id="tab-history" role="tabpanel">
+        <div class="history-grid">
+          <div class="pane-card">
+            <div class="pane-head">
+              <span class="ph-ic"><i class="fas fa-chart-line"></i></span>
+              <div class="ph-text"><b>أدائي في لمحة</b><small>رسوم مبنية على مكالماتك المحفوظة</small></div>
+            </div>
+            <div class="chart-grid">
+              <div class="chart-tile span-2"><h4><i class="fas fa-chart-area"></i> مكالماتي يوميًا</h4><small>آخر 14 يومًا</small><div class="chart-box"><canvas id="agChartDays"></canvas></div></div>
+              <div class="chart-tile"><h4><i class="fas fa-star"></i> اتجاه تقييمي</h4><small>آخر 15 مكالمة مقيَّمة</small><div class="chart-box"><canvas id="agChartScores"></canvas></div></div>
+              <div class="chart-tile"><h4><i class="fas fa-tags"></i> أنواع مكالماتي</h4><small>حسب التصنيف</small><div class="chart-box"><canvas id="agChartTypes"></canvas></div></div>
+            </div>
+          </div>
+
+          <div class="pane-card">
+            <div class="pane-head">
+              <span class="ph-ic"><i class="fas fa-clock-rotate-left"></i></span>
+              <div class="ph-text"><b>مكالماتي الأخيرة</b><small>آخر المكالمات المحفوظة بنتائج تقييمها</small></div>
+              <div class="ph-actions">
+                <span id="myAvgPerf" class="type-badge" style="display:none"></span>
+                <button id="refresh-calls-btn" class="btn btn-soft btn-sm" title="تحديث"><i class="fas fa-rotate-right"></i></button>
+              </div>
+            </div>
+            <div id="recent-box" class="content-box rec-list">
+              <div class="empty-hint"><i class="fas fa-database"></i> جارٍ تحميل مكالماتك…</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ───── TAB: POST-CALL REPORT (Review Mode) ───── -->
+      <section class="ws-pane" id="tab-report" role="tabpanel">
+        <div class="pane-card report-placeholder" id="reportEmpty">
+          <div class="empty-hint" style="padding:56px 20px"><i class="fas fa-clipboard-check"></i> لا يوجد تقرير بعد.<br>عند انتهاء المكالمة يظهر هنا تقرير التحليل الكامل تلقائيًا.</div>
+        </div>
+        <section class="report-section" id="report-section" style="display:none">
+          <div class="pane-head">
+            <span class="ph-ic ph-ai"><i class="fas fa-clipboard-check"></i></span>
+            <div class="ph-text"><b>تقرير ما بعد المكالمة</b><small>وضع المراجعة — ملخص وتقييمات المكالمة المنتهية</small></div>
+            <button id="pdf-btn" class="btn btn-ghost btn-sm" style="margin-inline-start:auto"><i class="fas fa-file-pdf"></i> تحميل (تفريغ + تقرير) PDF</button>
+          </div>
+          <div id="report-box" class="report-box"></div>
+        </section>
+      </section>
+
+      <!-- ───── TAB: SYSTEM LOGS ───── -->
+      <section class="ws-pane" id="tab-logs" role="tabpanel">
+        <div class="pane-card">
+          <div class="pane-head">
+            <span class="ph-ic"><i class="fas fa-terminal"></i></span>
+            <div class="ph-text"><b>سجلات النظام</b><small>أحداث الاتصال والمحرك</small></div>
+            <button class="btn btn-soft btn-sm" id="clear-btn" title="مسح الشاشة (التفريغ والاقتراحات والتقرير)"><i class="fas fa-broom"></i> مسح الشاشة</button>
+          </div>
+          <div id="log-box" class="content-box log-content"></div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ════════════════ BOTTOM ACTION BAR ════════════════ -->
+  <footer class="action-bar">
+    <div class="ab-state">
+      <span class="ab-dot"></span>
+      <span class="ab-label" id="abStateLabel">شريط الإجراءات</span>
+    </div>
+    <span id="save-status" class="save-status"></span>
+    <div class="ab-actions">
+      <button id="save-call-btn" class="btn btn-primary"><i class="fas fa-floppy-disk"></i> حفظ المكالمة</button>
+    </div>
+  </footer>
+
+  <!-- تنبيه المدرّب اللحظي — لوحة طافية أنيقة تظهر عند وصول اقتراح وتختفي تلقائيًا -->
+  <div id="coach-alert" class="coach-alert" role="status" aria-live="assertive"></div>
+
+  <!-- ════════════════ KNOWLEDGE / QUICK-REPLIES DRAWER ════════════════ -->
+  <div id="kbBackdrop" class="kb-backdrop"></div>
+  <aside id="kbDrawer" class="kb-drawer" aria-hidden="true" aria-label="قاعدة المعرفة والردود الجاهزة">
+    <div class="kb-head">
+      <div class="kb-title">
+        <div class="ph-text"><b>قاعدة المعرفة والردود الجاهزة</b><small>خطوات وحلول جاهزة لأشهر مشاكل خدمة WE</small></div>
+      </div>
+      <button class="modal-close kb-close" type="button" aria-label="إغلاق"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="kb-search"><i class="fas fa-magnifying-glass"></i><input id="kbSearch" type="text" placeholder="ابحث عن مشكلة أو ردّ جاهز…"></div>
+    <div id="kbList" class="kb-list"></div>
+  </aside>
+
+  <!-- ════════════════ MY PROFILE MODAL ════════════════ -->
+  <div class="modal-overlay" id="profileModal">
+    <div class="modal">
+      <div class="modal-head">
+        <h3><span class="mh-ic"><i class="fas fa-user-pen"></i></span> ملفي الشخصي</h3>
+        <button class="modal-close" onclick="Agent.closeProfileModal()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="form-grid">
+        <div class="input-group"><label>الاسم الكامل</label><input type="text" id="myFullName"></div>
+        <div class="input-group"><label>رقم الهاتف</label><input type="text" id="myPhone" placeholder="05xxxxxxxx"></div>
+        <div class="input-group" style="grid-column:1/-1"><label>البريد الإلكتروني (غير قابل للتعديل)</label><input type="email" id="myEmail" disabled style="opacity:.6"></div>
+      </div>
+      <div class="modal-foot"><button class="btn btn-primary" id="saveProfileBtn"><i class="fas fa-floppy-disk"></i> حفظ البيانات</button></div>
+      <div class="modal-head" style="margin-top:1.6rem"><h3 style="font-size:1.05rem"><span class="mh-ic"><i class="fas fa-shield-halved"></i></span> الأمان</h3></div>
+      <div class="form-grid">
+        <div class="input-group"><label>كلمة المرور الحالية</label><input type="password" id="curPass" placeholder="******"></div>
+        <div class="input-group"><label>كلمة المرور الجديدة</label><input type="password" id="newPass" placeholder="6 أحرف على الأقل"></div>
+      </div>
+      <div class="modal-foot"><button class="btn btn-soft" id="changePassBtn"><i class="fas fa-key"></i> تحديث كلمة المرور</button></div>
+    </div>
+  </div>
+
+  <script src="agent.js"></script>
+  <script src="agent-ui.js"></script>
+</body>
+</html>

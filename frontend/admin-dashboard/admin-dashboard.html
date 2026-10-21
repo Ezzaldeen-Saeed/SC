@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Call Monitor · مركز التحكم</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- External libs (charts). PDF export uses the browser's native print engine (no library). -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+
+  <!-- Shared SCM infrastructure (theme, i18n, notifications, SSE, palette, PDF, CSV) -->
+  <script src="../assets/scm-ui.js"></script>
+  <script src="../assets/scm-charts.js" defer></script>
+  <script src="../assets/scm-table.js" defer></script>
+
+  <!-- Admin design system -->
+  <link rel="stylesheet" href="animations.css">
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="components.css">
+  <link rel="stylesheet" href="premium.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- ════════════════ SIDEBAR ════════════════ -->
+  <aside class="sidebar" id="sidebar">
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="طي القائمة"><i class="fas fa-chevron-right"></i></button>
+
+    <div class="brand">
+      <div class="brand-mark"><i class="fas fa-headset"></i></div>
+      <div class="brand-text"><b>Smart Call Monitor</b><small>مركز تحكم الأدمن</small></div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-group" data-group="main">
+        <div class="nav-section-title">الرئيسية <i class="fas fa-chevron-down ng-caret"></i></div>
+        <div class="ng-items">
+          <div class="nav-item active" data-nav="view-overview" title="نظرة عامة"><i class="fas fa-gauge-high"></i><span>نظرة عامة</span></div>
+          <div class="nav-item" data-nav="view-live" title="التحليل اللحظي للمكالمات"><i class="fas fa-tower-broadcast"></i><span>التحليل اللحظي</span><span class="nav-badge" id="navLiveBadge"><span class="live-dot"></span><b>0</b></span></div>
+        </div>
+      </div>
+
+      <div class="nav-group" data-group="analytics">
+        <div class="nav-section-title">التحليلات والتقارير <i class="fas fa-chevron-down ng-caret"></i></div>
+        <div class="ng-items">
+          <div class="nav-item" data-nav="view-kpis" title="مؤشرات الأداء"><i class="fas fa-bullseye"></i><span>مؤشرات الأداء</span></div>
+          <div class="nav-item" data-nav="view-analytics" title="الرسوم التحليلية"><i class="fas fa-chart-line"></i><span>الرسوم التحليلية</span></div>
+          <div class="nav-item" data-nav="view-team" title="أداء الفريق"><i class="fas fa-trophy"></i><span>أداء الفريق</span></div>
+          <div class="nav-item" data-nav="view-alerts" title="التنبيهات الذكية"><i class="fas fa-triangle-exclamation"></i><span>التنبيهات الذكية</span><span class="nav-badge warn" id="navAlertBadge" style="display:none"><b>0</b></span></div>
+        </div>
+      </div>
+
+      <div class="nav-group" data-group="system">
+        <div class="nav-section-title">إدارة النظام <i class="fas fa-chevron-down ng-caret"></i></div>
+        <div class="ng-items">
+          <div class="nav-item" data-nav="view-calls" title="سجل المكالمات"><i class="fas fa-phone-volume"></i><span>سجل المكالمات</span></div>
+          <div class="nav-item" data-nav="view-customers" title="العملاء"><i class="fas fa-building-user"></i><span>العملاء</span></div>
+        </div>
+      </div>
+
+      <div class="nav-group" data-group="org">
+        <div class="nav-section-title">الصلاحيات والهيكلة <i class="fas fa-chevron-down ng-caret"></i></div>
+        <div class="ng-items">
+          <div class="nav-item" data-nav="view-users" title="إدارة المستخدمين"><i class="fas fa-users-gear"></i><span>إدارة المستخدمين</span></div>
+          <div class="nav-item" data-nav="view-tree" title="الهيكل التنظيمي"><i class="fas fa-sitemap"></i><span>الهيكل التنظيمي</span></div>
+          <div class="nav-item" data-nav="view-audit" title="سجل التدقيق"><i class="fas fa-shield-halved"></i><span>سجل التدقيق</span></div>
+        </div>
+      </div>
+    </nav>
+
+    <div class="side-foot">
+      <div class="side-status" id="sideStatus" title="حالة النظام">
+        <span class="ss-dot"></span><span class="ss-label">النظام يعمل</span><small id="sideUpdated">—</small>
+      </div>
+      <div class="side-user">
+        <div class="admin-avatar" id="sideAvatar">A</div>
+        <div class="side-user-info">
+          <b id="sideAdminName">المشرف</b>
+          <small id="sideAdminEmail">admin@scm.com</small>
+        </div>
+      </div>
+      <button class="side-btn scm-settings-btn" onclick="SCM.openSettings()"><i class="fas fa-gear"></i><span>الإعدادات</span></button>
+      <button class="side-btn danger" id="logoutBtnSide"><i class="fas fa-arrow-right-from-bracket"></i><span>تسجيل خروج</span></button>
+    </div>
+  </aside>
+
+  <!-- ════════════════ SHELL ════════════════ -->
+  <div class="shell">
+
+    <!-- ───── TOPBAR ───── -->
+    <header class="topbar">
+      <div class="topbar-title">
+        <b id="topbarTitle">نظرة عامة</b>
+        <small id="topbarDate">—</small>
+      </div>
+
+      <button class="global-search" onclick="SCM.openPalette && SCM.openPalette()" data-scm-noi18n>
+        <i class="fas fa-magnifying-glass"></i>
+        <span class="gs-label">بحث شامل، تنقّل، أو إجراء…</span>
+        <span class="kbd">Ctrl K</span>
+      </button>
+
+      <div class="topbar-spacer"></div>
+
+      <div class="topbar-actions">
+        <span class="live-counter" title="مكالمات نشطة الآن"><span class="live-dot"></span><b id="liveCount">0</b> <span class="lc-label">مكالمة حيّة</span></span>
+        <button class="btn btn-primary btn-sm" onclick="App.openUserModal()"><i class="fas fa-plus"></i> إضافة مستخدم</button>
+        <button class="icon-btn" id="themeBtn" onclick="SCM.toggleTheme()" title="السمة"><i class="fas fa-moon"></i></button>
+        <button class="icon-btn" onclick="App.openNotifications()" title="الإشعارات"><i class="fas fa-bell"></i><span class="count-dot" id="notifCount" style="display:none">0</span></button>
+        <button class="profile-chip" id="profileChip">
+          <span class="pc-avatar" id="chipAvatar">A</span>
+          <span class="pc-name" id="chipName">المشرف<small id="chipRole">أدمن</small></span>
+          <i class="fas fa-chevron-down" style="font-size:.7rem;color:var(--muted)"></i>
+        </button>
+      </div>
+
+      <!-- Profile dropdown -->
+      <div class="profile-menu" id="profileMenu">
+        <div class="pm-head">
+          <span class="pm-av" id="pmAvatar">A</span>
+          <div><b id="pmName" style="font-size:.9rem">المشرف</b><div class="cell-sub" id="pmEmail">admin@scm.com</div></div>
+        </div>
+        <div class="pm-item" onclick="App.openProfileModal()"><i class="fas fa-user-pen"></i> ملفي الشخصي</div>
+        <div class="pm-item" onclick="SCM.openSettings()"><i class="fas fa-gear"></i> الإعدادات</div>
+        <div class="pm-item" onclick="SCM.toggleTheme()"><i class="fas fa-circle-half-stroke"></i> تبديل السمة</div>
+        <div class="pm-sep"></div>
+        <div class="pm-item danger" id="logoutMenuBtn"><i class="fas fa-arrow-right-from-bracket"></i> تسجيل خروج</div>
+      </div>
+    </header>
+
+    <!-- ───── CONTENT ───── -->
+    <main class="content">
+
+      <!-- ========= OVERVIEW ========= -->
+      <section class="view active" id="view-overview">
+
+        <!-- Hero -->
+        <div class="hero">
+          <div class="hero-inner">
+            <div class="hero-left">
+              <span class="hero-eyebrow"><i class="fas fa-wand-magic-sparkles"></i> لوحة القيادة الذكية</span>
+              <h2>مرحبًا بعودتك، <span id="heroName">المشرف</span> <span class="wave">👋</span></h2>
+              <p class="hero-sub">إليك ملخّص أداء منظومة المكالمات في الوقت الحقيقي.</p>
+              <div class="ai-summary">
+                <div class="ai-orb"><i class="fas fa-robot"></i></div>
+                <div class="ai-body">
+                  <b>ملخّص الذكاء الاصطناعي</b>
+                  <p id="aiSummaryText">جارٍ تحليل بيانات اليوم…</p>
+                </div>
+              </div>
+            </div>
+            <div class="hero-stats">
+              <div class="hero-stat hs-green"><div class="hs-top"><i class="fas fa-heart-pulse"></i> صحة النظام</div><b id="heroHealth">—</b></div>
+              <div class="hero-stat hs-blue"><div class="hs-top"><i class="fas fa-phone-volume"></i> مكالمات اليوم</div><b id="heroCallsToday">—</b></div>
+              <div class="hero-stat hs-green"><div class="hs-top"><i class="fas fa-user-check"></i> موظفون نشطون</div><b id="heroActiveAgents">—</b></div>
+              <div class="hero-stat hs-red"><div class="hs-top"><i class="fas fa-face-frown"></i> مكالمات سلبية</div><b id="heroNegative">—</b></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Triage: what needs attention right now. Leads the page by design —
+             the admin sees actionable alerts before any chart. -->
+        <div class="section" style="margin-top:var(--s-4)">
+          <div class="section-head">
+            <h3><span class="sh-ic"><i class="fas fa-triangle-exclamation"></i></span> يحتاج انتباهك الآن</h3>
+            <button class="sh-link" id="overviewAlertsMore" onclick="App.switchView('view-alerts')">عرض كل التنبيهات</button>
+          </div>
+          <div class="alerts-grid triage" id="overviewAlerts"></div>
+        </div>
+
+        <!-- Quick access -->
+        <div class="section">
+          <div class="section-head">
+            <h3><span class="sh-ic"><i class="fas fa-bolt"></i></span> وصول سريع</h3>
+            <span class="sh-sub">انتقل مباشرة إلى أقسام التحليلات والإدارة</span>
+          </div>
+          <div class="qa-grid stagger">
+            <div class="qa-card" onclick="App.switchView('view-kpis')"><span class="qa-ic" style="background:rgba(37,99,235,.12);color:var(--primary)"><i class="fas fa-bullseye"></i></span><div><b>مؤشرات الأداء</b><small>المستهدفات والاتجاهات</small></div><i class="fas fa-arrow-left qa-arrow"></i></div>
+            <div class="qa-card" onclick="App.switchView('view-analytics')"><span class="qa-ic" style="background:rgba(14,165,233,.12);color:var(--info)"><i class="fas fa-chart-line"></i></span><div><b>الرسوم التحليلية</b><small>اتجاهات وتوزيعات المكالمات</small></div><i class="fas fa-arrow-left qa-arrow"></i></div>
+            <div class="qa-card" onclick="App.switchView('view-team')"><span class="qa-ic" style="background:rgba(245,158,11,.14);color:var(--warning)"><i class="fas fa-trophy"></i></span><div><b>أداء الفريق</b><small>الترتيب ولوحة الصدارة</small></div><i class="fas fa-arrow-left qa-arrow"></i></div>
+            <div class="qa-card" onclick="App.switchView('view-alerts')"><span class="qa-ic" style="background:rgba(239,68,68,.12);color:var(--danger)"><i class="fas fa-triangle-exclamation"></i></span><div><b>التنبيهات الذكية</b><small>توصيات الذكاء الاصطناعي</small></div><i class="fas fa-arrow-left qa-arrow"></i></div>
+            <div class="qa-card" onclick="App.switchView('view-calls')"><span class="qa-ic" style="background:rgba(16,185,129,.12);color:var(--success)"><i class="fas fa-phone-volume"></i></span><div><b>سجل المكالمات</b><small>كل المكالمات المُحللة</small></div><i class="fas fa-arrow-left qa-arrow"></i></div>
+            <div class="qa-card" onclick="App.switchView('view-users')"><span class="qa-ic" style="background:rgba(30,64,175,.12);color:var(--secondary)"><i class="fas fa-users-gear"></i></span><div><b>إدارة المستخدمين</b><small>الحسابات والأدوار</small></div><i class="fas fa-arrow-left qa-arrow"></i></div>
+          </div>
+        </div>
+
+        <!-- Executive KPIs — the four headline metrics vs target. The full set of
+             eight lives on the KPI page; this stays a summary. -->
+        <div class="section">
+          <div class="section-head">
+            <h3><span class="sh-ic"><i class="fas fa-bullseye"></i></span> المؤشرات التنفيذية</h3>
+            <button class="sh-link" onclick="App.switchView('view-kpis')">كل المؤشرات</button>
+          </div>
+          <div class="kpi-band" id="kpiBandExec"></div>
+        </div>
+
+        <!-- Live + Activity -->
+        <div class="section">
+          <div class="grid grid-split">
+            <div class="glass-panel">
+              <div class="section-head" style="margin-bottom:var(--s-3)">
+                <h3 style="font-size:1rem"><span class="sh-ic"><i class="fas fa-tower-broadcast"></i></span> المراقبة اللحظية</h3>
+                <span class="sh-sub" id="liveSubLabel">أحدث المكالمات</span>
+              </div>
+              <div class="live-grid" id="liveCallsGridMini"></div>
+            </div>
+            <div class="glass-panel">
+              <div class="section-head" style="margin-bottom:var(--s-2)">
+                <h3 style="font-size:1rem"><span class="sh-ic"><i class="fas fa-wave-square"></i></span> النشاط الحيّ</h3>
+              </div>
+              <div class="feed" id="activityFeed"></div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ========= LIVE MONITOR ========= -->
+      <section class="view" id="view-live">
+        <div class="page-head"><div><h1>التحليل اللحظي للمكالمات</h1><p>بطاقات مراقبة حيّة للمكالمات النشطة والأحدث مع مؤشرات المخاطر.</p></div></div>
+        <div class="live-grid" id="liveCallsGrid"></div>
+      </section>
+
+      <!-- ========= KPIs ========= -->
+      <section class="view" id="view-kpis">
+        <div class="page-head"><div><h1>مؤشرات الأداء</h1><p>مؤشرات خدمة العملاء مقابل المستهدفات، وإحصاءات النظام والتشغيل.</p></div></div>
+
+        <div class="section">
+          <div class="section-head">
+            <h3><span class="sh-ic"><i class="fas fa-bullseye"></i></span> مؤشرات خدمة العملاء</h3>
+            <span class="sh-sub">مقابل المستهدفات · الاتجاه لآخر ٣٠ يومًا</span>
+          </div>
+          <div class="kpi-band" id="kpiBand"></div>
+        </div>
+
+        <div class="section">
+          <div class="section-head">
+            <h3><span class="sh-ic"><i class="fas fa-layer-group"></i></span> نظرة عامة على النظام</h3>
+            <span class="sh-sub">إجمالي الحسابات والعملاء ونشاط المنصّة</span>
+          </div>
+          <div class="grid grid-kpi stagger" id="kpiGrid">
+          <div class="kpi-card kc-blue">
+            <div class="kpi-top"><div><div class="kpi-label">إجمالي المستخدمين</div><div class="kpi-value" id="kpiUsers">—</div></div><div class="kpi-ic"><i class="fas fa-user-group"></i></div></div>
+            <div class="kpi-foot"><span class="kpi-trend flat" id="kpiUsersTrend">—</span><span class="kpi-period">آخر 30 يومًا</span></div>
+            <div class="kpi-spark" id="sparkUsers"></div>
+          </div>
+          <div class="kpi-card kc-violet">
+            <div class="kpi-top"><div><div class="kpi-label">إجمالي المكالمات</div><div class="kpi-value" id="kpiCalls">—</div></div><div class="kpi-ic"><i class="fas fa-phone-volume"></i></div></div>
+            <div class="kpi-foot"><span class="kpi-trend flat" id="kpiCallsTrend">—</span><span class="kpi-period">آخر 7 أيام</span></div>
+            <div class="kpi-spark" id="sparkCalls"></div>
+          </div>
+          <div class="kpi-card kc-green">
+            <div class="kpi-top"><div><div class="kpi-label">نشطون الآن</div><div class="kpi-value" id="kpiActive">—</div></div><div class="kpi-ic"><i class="fas fa-circle-check"></i></div></div>
+            <div class="kpi-foot"><span class="kpi-trend flat" id="kpiActiveTrend">—</span><span class="kpi-period">من إجمالي المستخدمين</span></div>
+            <div class="kpi-spark" id="sparkActive"></div>
+          </div>
+          <div class="kpi-card kc-amber">
+            <div class="kpi-top"><div><div class="kpi-label">قاعدة العملاء</div><div class="kpi-value" id="kpiCustomers">—</div></div><div class="kpi-ic"><i class="fas fa-address-book"></i></div></div>
+            <div class="kpi-foot"><span class="kpi-trend flat" id="kpiCustomersTrend">—</span><span class="kpi-period">عميل مُسجّل</span></div>
+            <div class="kpi-spark" id="sparkCustomers"></div>
+          </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-head">
+            <h3><span class="sh-ic"><i class="fas fa-gears"></i></span> مؤشرات تشغيلية</h3>
+            <span class="sh-sub">نشاط اليوم ومدد المكالمات وذروة الضغط</span>
+          </div>
+          <div class="grid grid-kpi stagger" id="kpiGridOps">
+          <div class="kpi-card kc-blue">
+            <div class="kpi-top"><div><div class="kpi-label">مكالمات اليوم</div><div class="kpi-value" id="kpiToday">—</div></div><div class="kpi-ic"><i class="fas fa-calendar-day"></i></div></div>
+            <div class="kpi-foot"><span class="kpi-trend flat" id="kpiTodayTrend">—</span><span class="kpi-period">مقارنة بالأمس</span></div>
+            <div class="kpi-spark" id="sparkToday"></div>
+          </div>
+          <div class="kpi-card kc-violet">
+            <div class="kpi-top"><div><div class="kpi-label">متوسط مدة المكالمة</div><div class="kpi-value" id="kpiAvgDur">—</div></div><div class="kpi-ic"><i class="fas fa-stopwatch"></i></div></div>
+            <div class="kpi-foot"><span class="kpi-trend flat" id="kpiAvgDurTrend">—</span><span class="kpi-period">آخر 7 أيام مقابل السابقة</span></div>
+            <div class="kpi-spark" id="sparkAvgDur"></div>
+          </div>
+          <div class="kpi-card kc-green">
+            <div class="kpi-top"><div><div class="kpi-label">نسبة المشاعر الإيجابية</div><div class="kpi-value" id="kpiPosRate">—</div></div><div class="kpi-ic"><i class="fas fa-face-smile"></i></div></div>
+            <div class="kpi-foot"><span class="kpi-trend flat" id="kpiPosRateTrend">—</span><span class="kpi-period">من إجمالي المكالمات</span></div>
+            <div class="kpi-spark" id="sparkPosRate"></div>
+          </div>
+          <div class="kpi-card kc-amber">
+            <div class="kpi-top"><div><div class="kpi-label">ساعة الذروة</div><div class="kpi-value" id="kpiPeak">—</div></div><div class="kpi-ic"><i class="fas fa-bolt"></i></div></div>
+            <div class="kpi-foot"><span class="kpi-trend flat" id="kpiPeakTrend">—</span><span class="kpi-period">توزيع 24 ساعة</span></div>
+            <div class="kpi-spark" id="sparkPeak"></div>
+          </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========= ANALYTICS (tabbed) ========= -->
+      <section class="view" id="view-analytics">
+        <div class="page-head">
+          <div><h1>الرسوم التحليلية</h1><p>رؤى مرئية مبنية على بيانات المكالمات — منظمة في تبويبات.</p></div>
+          <div class="chips" id="analyticsTabs">
+            <button class="chip on" data-pane="pane-trends"><i class="fas fa-chart-area"></i> الاتجاهات</button>
+            <button class="chip" data-pane="pane-dist"><i class="fas fa-chart-pie"></i> التوزيعات</button>
+            <button class="chip" data-pane="pane-quality"><i class="fas fa-star"></i> الجودة والكثافة</button>
+          </div>
+        </div>
+
+        <div class="tab-pane active" id="pane-trends">
+          <div class="analytics-grid">
+            <div class="chart-card span-2"><h4><span class="cc-ic"><i class="fas fa-chart-area"></i></span> حجم المكالمات</h4><div class="cc-sub">آخر 14 يومًا</div><div class="chart-box"><canvas id="chartCallsDay"></canvas></div></div>
+            <div class="chart-card"><h4><span class="cc-ic"><i class="fas fa-code-compare"></i></span> مقارنة أسبوعية</h4><div class="cc-sub">هذا الأسبوع مقابل الماضي</div><div class="chart-box"><canvas id="chartWeekCompare"></canvas></div></div>
+            <div class="chart-card"><h4><span class="cc-ic"><i class="fas fa-hourglass-half"></i></span> متوسط مدة المكالمة</h4><div class="cc-sub">بالدقائق · آخر 14 يومًا</div><div class="chart-box"><canvas id="chartAvgDur"></canvas></div></div>
+            <div class="chart-card span-2"><h4><span class="cc-ic"><i class="fas fa-wave-square"></i></span> اتجاه المشاعر</h4><div class="cc-sub">إيجابي · محايد · سلبي يوميًا · آخر 14 يومًا</div><div class="chart-box"><canvas id="chartSentTrend"></canvas></div></div>
+          </div>
+        </div>
+
+        <div class="tab-pane" id="pane-dist">
+          <div class="analytics-grid">
+            <div class="chart-card"><h4><span class="cc-ic"><i class="fas fa-face-smile"></i></span> توزيع المشاعر</h4><div class="cc-sub">إيجابي · محايد · سلبي</div><div class="chart-box"><canvas id="chartSentiment"></canvas></div></div>
+            <div class="chart-card"><h4><span class="cc-ic"><i class="fas fa-tags"></i></span> أنواع المكالمات</h4><div class="cc-sub">حسب التصنيف</div><div class="chart-box"><canvas id="chartTypes"></canvas></div></div>
+            <div class="chart-card"><h4><span class="cc-ic"><i class="fas fa-clipboard-check"></i></span> حل المشكلات</h4><div class="cc-sub">تم الحل · جزئي · لم يُحل</div><div class="chart-box"><canvas id="chartResolution"></canvas></div></div>
+            <div class="chart-card span-2"><h4><span class="cc-ic"><i class="fas fa-clock"></i></span> المكالمات حسب الساعة</h4><div class="cc-sub">توزيع النشاط على مدار اليوم</div><div class="chart-box"><canvas id="chartHours"></canvas></div></div>
+            <div class="chart-card"><h4><span class="cc-ic"><i class="fas fa-chart-simple"></i></span> توزيع درجات الجودة</h4><div class="cc-sub">عدد المكالمات لكل شريحة تقييم</div><div class="chart-box"><canvas id="chartScoreDist"></canvas></div></div>
+          </div>
+        </div>
+
+        <div class="tab-pane" id="pane-quality">
+          <div class="analytics-grid">
+            <div class="chart-card span-2"><h4><span class="cc-ic"><i class="fas fa-ranking-star"></i></span> أعلى الموظفين أداءً</h4><div class="cc-sub">متوسط درجة الجودة</div><div class="chart-box tall"><canvas id="chartScores"></canvas></div></div>
+            <div class="chart-card"><h4><span class="cc-ic"><i class="fas fa-headset"></i></span> حجم المكالمات لكل موظف</h4><div class="cc-sub">أعلى 10 موظفين</div><div class="chart-box tall"><canvas id="chartAgentVolume"></canvas></div></div>
+            <div class="chart-card span-2"><h4><span class="cc-ic"><i class="fas fa-table-cells"></i></span> خريطة كثافة المكالمات</h4><div class="cc-sub">حسب اليوم والساعة</div><div id="heatmap" class="chart-box" style="height:auto"></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========= TEAM PERFORMANCE ========= -->
+      <section class="view" id="view-team">
+        <div class="page-head"><div><h1>أداء الفريق</h1><p>ترتيب الموظفين حسب متوسط الجودة، مع لوحة الصدارة الكاملة.</p></div></div>
+
+        <div class="section">
+          <div class="team-grid">
+            <div class="glass-panel"><div class="spread" style="margin-bottom:12px"><b style="font-size:.92rem"><i class="fas fa-arrow-trend-up" style="color:var(--success)"></i> الأعلى أداءً</b></div><div id="topAgents"></div></div>
+            <div class="glass-panel"><div class="spread" style="margin-bottom:12px"><b style="font-size:.92rem"><i class="fas fa-arrow-trend-down" style="color:var(--danger)"></i> بحاجة لمتابعة</b></div><div id="bottomAgents"></div></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-head">
+            <h3><span class="sh-ic"><i class="fas fa-list-ol"></i></span> لوحة الصدارة الكاملة</h3>
+            <span class="sh-sub">كل الموظفين · الجودة والمشاعر وعدد المكالمات</span>
+          </div>
+          <div class="glass-panel">
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>#</th><th>الموظف</th><th>المكالمات</th><th>متوسط الجودة</th><th>إيجابي</th><th>سلبي</th><th>الأداء</th></tr></thead>
+                <tbody id="teamTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========= SMART ALERTS ========= -->
+      <section class="view" id="view-alerts">
+        <div class="page-head">
+          <div><h1>التنبيهات الذكية</h1><p>توصيات وتحذيرات مبنية على الذكاء الاصطناعي وبيانات الأداء.</p></div>
+          <button class="btn btn-ghost" onclick="App.silentRefresh()"><i class="fas fa-rotate"></i> تحديث</button>
+        </div>
+        <div class="alerts-grid" id="smartAlerts"></div>
+      </section>
+
+      <!-- ========= CALLS ========= -->
+      <section class="view" id="view-calls">
+        <div class="page-head">
+          <div><h1>سجل المكالمات</h1><p>كل المكالمات المُحللة عبر المنظومة.</p></div>
+          <button class="btn btn-ghost" onclick="App.exportCallsCsv()"><i class="fas fa-file-csv"></i> تصدير CSV</button>
+        </div>
+        <div class="glass-panel">
+          <div class="toolbar">
+            <div class="search-field"><i class="fas fa-magnifying-glass"></i><input id="callSearch" placeholder="بحث بالوكيل أو العميل أو الملخّص…"></div>
+            <div class="chips" id="callSentChips">
+              <button class="chip on" data-sent="all">الكل</button>
+              <button class="chip" data-sent="positive">إيجابي</button>
+              <button class="chip" data-sent="neutral">محايد</button>
+              <button class="chip" data-sent="negative">سلبي</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>الوكيل</th><th>العميل</th><th>رقم العميل</th><th>وقت البدء</th><th>المدة</th><th>التصنيف</th><th>المشاعر</th><th>التقييم</th></tr></thead>
+              <tbody id="callsTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========= CUSTOMERS ========= -->
+      <section class="view" id="view-customers">
+        <div class="page-head">
+          <div><h1>العملاء</h1><p>قاعدة العملاء — اضغط على عميل لعرض ملف 360°.</p></div>
+          <button class="btn btn-ghost" onclick="App.exportCustomersCsv()"><i class="fas fa-file-csv"></i> تصدير</button>
+        </div>
+        <div class="glass-panel">
+          <div class="toolbar"><div class="search-field"><i class="fas fa-magnifying-glass"></i><input id="customerSearch" placeholder="بحث بالاسم أو الهاتف…"></div></div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>العميل</th><th>رقم الهاتف</th><th>البريد الإلكتروني</th><th>الموظف المسؤول</th><th>عدد المكالمات</th><th></th></tr></thead>
+              <tbody id="customersTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========= USERS ========= -->
+      <section class="view" id="view-users">
+        <div class="page-head">
+          <div><h1>إدارة المستخدمين</h1><p>إنشاء الحسابات، تعيين الأدوار والمسؤولين المباشرين.</p></div>
+          <div class="flex gap-12">
+            <button class="btn btn-ghost" onclick="App.exportUsers()"><i class="fas fa-file-csv"></i> تصدير</button>
+            <button class="btn btn-primary" onclick="App.openUserModal()"><i class="fas fa-plus"></i> إضافة مستخدم</button>
+          </div>
+        </div>
+        <div class="glass-panel">
+          <div class="toolbar">
+            <div class="search-field"><i class="fas fa-magnifying-glass"></i><input id="userSearch" placeholder="بحث بالاسم أو البريد…"></div>
+            <div class="chips" id="userRoleChips">
+              <button class="chip on" data-role="all">الكل</button>
+              <button class="chip" data-role="admin">أدمن</button>
+              <button class="chip" data-role="manager">مدير</button>
+              <button class="chip" data-role="supervisor">مشرف</button>
+              <button class="chip" data-role="agent">وكيل</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>الاسم</th><th>البريد</th><th>الدور</th><th>المسؤول المباشر</th><th>الحالة</th><th data-nosort>إجراءات</th></tr></thead>
+              <tbody id="usersTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========= ORG TREE ========= -->
+      <section class="view" id="view-tree">
+        <div class="page-head"><div><h1>الهيكل التنظيمي</h1><p>تسلسل الإدارة — اضغط لتوسيع الفروع.</p></div><button class="btn btn-ghost" id="treeRefreshBtn"><i class="fas fa-rotate"></i> تحديث</button></div>
+        <div class="glass-panel"><div id="orgTree" class="org-tree"></div></div>
+      </section>
+
+      <!-- ========= AUDIT ========= -->
+      <section class="view" id="view-audit">
+        <div class="page-head">
+          <div><h1>سجل التدقيق</h1><p>خط زمني لكل الأحداث الحسّاسة في النظام.</p></div>
+          <button class="btn btn-ghost" onclick="App.exportAuditCsv()"><i class="fas fa-file-csv"></i> تصدير</button>
+        </div>
+        <div class="glass-panel">
+          <div class="toolbar">
+            <div class="search-field"><i class="fas fa-magnifying-glass"></i><input id="auditSearch" placeholder="بحث بالاسم أو الإجراء…"></div>
+            <select class="mini-select" id="auditAction">
+              <option value="">— كل الإجراءات —</option>
+              <option value="LOGIN">تسجيل دخول</option>
+              <option value="LOGOUT">تسجيل خروج</option>
+              <option value="CREATE_USER">إنشاء مستخدم</option>
+              <option value="UPDATE_USER">تعديل مستخدم</option>
+              <option value="DELETE_USER">حذف مستخدم</option>
+              <option value="CREATE_CALL">إنشاء مكالمة</option>
+              <option value="ASSIGN_SUPERVISOR">تعيين مشرف</option>
+              <option value="ASSIGN_AGENT">تعيين موظف</option>
+              <option value="GENERATE_REPORT">توليد تقرير</option>
+            </select>
+            <select class="mini-select" id="auditPeriod">
+              <option value="all">كل الفترات</option>
+              <option value="today">اليوم</option>
+              <option value="7">آخر 7 أيام</option>
+              <option value="30">آخر 30 يوم</option>
+            </select>
+            <button class="btn btn-soft btn-sm" id="auditRefreshBtn"><i class="fas fa-rotate"></i></button>
+            <span class="muted" id="auditCount" style="margin-inline-start:auto;font-size:.82rem"></span>
+          </div>
+          <div class="timeline" id="auditTimeline"></div>
+        </div>
+      </section>
+
+      <!-- ========= USER PROFILE (drill-down) ========= -->
+      <section class="view" id="view-profile"></section>
+
+      <!-- ========= CUSTOMER 360 (drill-down) ========= -->
+      <section class="view" id="view-customer360"></section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ════════════════ MODALS ════════════════ -->
+
+<!-- Create user -->
+<div class="modal-overlay" id="userModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3><span class="mh-ic"><i class="fas fa-user-plus"></i></span> إنشاء مستخدم جديد</h3>
+      <button class="modal-close" onclick="App.closeUserModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="form-grid">
+      <div class="input-group"><label>الاسم الكامل</label><input type="text" id="newFullName" placeholder="مثال: أحمد المنصور"></div>
+      <div class="input-group"><label>اسم المستخدم</label><input type="text" id="newUsername" placeholder="ahmed.m"></div>
+      <div class="input-group"><label>البريد الإلكتروني</label><input type="email" id="newEmail" placeholder="ahmed@scm.com"></div>
+      <div class="input-group"><label>رقم الهاتف</label><input type="text" id="newPhone" placeholder="05xxxxxxxx"></div>
+      <div class="input-group"><label>كلمة المرور</label><input type="password" id="newPassword" placeholder="6 أحرف على الأقل"></div>
+      <div class="input-group"><label>الدور</label><select id="newRole"><option value="agent">وكيل (Agent)</option><option value="supervisor">مشرف (Supervisor)</option><option value="manager">مدير (Manager)</option><option value="admin">أدمن (Admin)</option></select></div>
+      <div class="input-group"><label>الحالة</label><select id="newStatus"><option value="true">نشط</option><option value="false">غير نشط</option></select></div>
+      <div class="input-group" id="newManagerWrap"><label id="newManagerLabel">المسؤول المباشر</label><select id="newManager"></select></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-soft" onclick="App.closeUserModal()">إلغاء</button>
+      <button class="btn btn-primary" id="createUserBtn"><i class="fas fa-floppy-disk"></i> حفظ المستخدم</button>
+    </div>
+  </div>
+</div>
+
+<!-- Call detail -->
+<div class="modal-overlay" id="callModal">
+  <div class="modal lg">
+    <div class="modal-head">
+      <h3><span class="mh-ic"><i class="fas fa-file-waveform"></i></span> تفاصيل المكالمة والتحليل</h3>
+      <div class="flex gap-12">
+        <button class="btn btn-ghost btn-sm" id="downloadPdfBtn" onclick="App.downloadCallPdf()"><i class="fas fa-file-pdf"></i> تقرير PDF</button>
+        <button class="modal-close" onclick="App.closeCallDetail()"><i class="fas fa-times"></i></button>
+      </div>
+    </div>
+    <div id="callDetailContent"><div class="cd-empty"><span class="spinner"></span> جارٍ التحميل…</div></div>
+  </div>
+</div>
+
+<!-- My profile -->
+<div class="modal-overlay" id="profileModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3><span class="mh-ic"><i class="fas fa-user-pen"></i></span> ملفي الشخصي</h3>
+      <button class="modal-close" onclick="App.closeProfileModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="form-grid">
+      <div class="input-group"><label>الاسم الكامل</label><input type="text" id="myFullName"></div>
+      <div class="input-group"><label>رقم الهاتف</label><input type="text" id="myPhone" placeholder="05xxxxxxxx"></div>
+      <div class="input-group" style="grid-column:1/-1"><label>البريد الإلكتروني (غير قابل للتعديل)</label><input type="email" id="myEmail" disabled style="opacity:.6"></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-primary" id="saveProfileBtn"><i class="fas fa-floppy-disk"></i> حفظ البيانات</button></div>
+    <div class="modal-head" style="margin-top:1.6rem"><h3 style="font-size:1.05rem"><span class="mh-ic"><i class="fas fa-shield-halved"></i></span> الأمان</h3></div>
+    <div class="form-grid">
+      <div class="input-group"><label>كلمة المرور الحالية</label><input type="password" id="curPass" placeholder="******"></div>
+      <div class="input-group"><label>كلمة المرور الجديدة</label><input type="password" id="newPass" placeholder="6 أحرف على الأقل"></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-soft" id="changePassBtn"><i class="fas fa-key"></i> تحديث كلمة المرور</button></div>
+  </div>
+</div>
+
+<!-- Notifications drawer -->
+<div class="drawer-overlay" id="notifOverlay" onclick="App.closeNotifications()"></div>
+<aside class="drawer" id="notifDrawer" data-scm-noi18n>
+  <div class="drawer-head">
+    <h3><i class="fas fa-bell" style="color:var(--primary)"></i> مركز الإشعارات</h3>
+    <button class="modal-close" onclick="App.closeNotifications()"><i class="fas fa-times"></i></button>
+  </div>
+  <div class="drawer-tabs" id="notifTabs">
+    <button class="drawer-tab on" data-cat="all">الكل</button>
+    <button class="drawer-tab" data-cat="system">النظام</button>
+    <button class="drawer-tab" data-cat="security">الأمان</button>
+    <button class="drawer-tab" data-cat="calls">المكالمات</button>
+    <button class="drawer-tab" data-cat="ai">تنبيهات AI</button>
+    <button class="drawer-tab" data-cat="users">المستخدمون</button>
+  </div>
+  <div class="drawer-body" id="notifList"></div>
+</aside>
+
+<!-- ════════════════ SCRIPTS (order matters: core first, then modules) ════════════════ -->
+<script src="dashboard.js"></script>
+<script src="charts.js"></script>
+<script src="realtime.js"></script>
+<script src="users.js"></script>
+<script src="calls.js"></script>
+<script src="audit.js"></script>
+</body>
+</html>

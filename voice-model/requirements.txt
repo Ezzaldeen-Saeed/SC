@@ -1,0 +1,31 @@
+# ── Web server + Dashboard ──────────────────────────────
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+python-multipart>=0.0.9
+websockets>=12.0
+python-dotenv>=1.0.0
+
+# ── LLM client (LM Studio / Ollama عبر OpenAI-compatible API) ──
+openai>=1.30.0
+httpx>=0.27.0
+
+# ── Speech-to-Text: Whisper محلي (faster-whisper / CTranslate2) ──
+# التفريغ محلي بالكامل — لا API خارجي. النموذج الافتراضي large-v3 (يُنزَّل أول تشغيل).
+faster-whisper>=1.0.0
+numpy>=1.24.0
+scipy>=1.10.0            # إعادة أخذ العيّنات 48k→16k بمرشّح مضادّ للتشويه
+# تشغيل GPU (NVIDIA) — مطلوب مكتبات CUDA 12 (الثلاثة معاً؛ cublas يعتمد على cudart):
+#   pip install nvidia-cublas-cu12 nvidia-cudnn-cu12 nvidia-cuda-runtime-cu12
+# whisper_service يضيف مساراتها تلقائياً على ويندوز. على CPU فقط تجاهلها — النظام
+# يتراجع تلقائياً لـ CPU/int8 (أبطأ لكنه يعمل).
+
+# ── Discord voice capture ───────────────────────────────
+discord.py>=2.4.0
+discord-ext-voice-recv>=0.5.0
+PyNaCl>=1.5.0
+aiohttp>=3.9.0
+
+# ── (اختياري) اختبارات وحدة حزمة pipeline/ ──────────────────
+# الاختبارات تعمل مستقلة بلا أي تثبيت: python pipeline/tests/test_cleaner.py
+# ولمن يفضّل pytest (اكتشاف + تقارير أفضل):
+# pytest>=8.0.0

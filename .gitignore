@@ -1,0 +1,38 @@
+# ───────────── Dependencies ─────────────
+node_modules/
+**/node_modules/
+
+# ───────────── Python ─────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# ───────────── Secrets / environment ─────────────
+.env
+**/.env
+# بس نسيب أمثلة الإعدادات متتبّعة
+!**/.env.example
+
+# ───────────── Voice model: ملفات الديباج/التشغيل ─────────────
+_debug_audio/
+**/_debug_audio/
+*.wav
+*.mp4
+
+# ───────────── Logs ─────────────
+*.log
+**/logs/
+
+# ───────────── Build output (Next.js اتشال — نتجاهله احتياطاً) ─────────────
+.next/
+out/
+dist/
+build/
+
+# ───────────── OS / Editor ─────────────
+.DS_Store
+Thumbs.db
+*.swp

@@ -1,0 +1,128 @@
+/* =====================================================================
+   premium.css — Premium visual layer for the Admin Control Center
+   ---------------------------------------------------------------------
+   Loaded AFTER dashboard.css + components.css. Elevates *finish* only,
+   without changing layout: softer layered depth, refined typography,
+   gradient accents, richer hover/motion, and polished tables · modals ·
+   timeline · org tree, plus a proper mobile pass.
+   ===================================================================== */
+
+/* ─────────────────────────────────────────────────────────────────────
+   1. Depth — softer, more layered shadows (light mode) for a premium,
+      "floating" SaaS feel. Dark keeps its stronger shadows (more specific
+      selector wins), so this only refines light mode.
+   ───────────────────────────────────────────────────────────────────── */
+:root {
+  --shadow-xs: 0 1px 2px rgba(16,24,40,.04);
+  --shadow-sm: 0 1px 2px rgba(16,24,40,.04), 0 4px 10px -3px rgba(16,24,40,.06);
+  --shadow-md: 0 4px 10px -3px rgba(16,24,40,.06), 0 14px 28px -6px rgba(16,24,40,.09);
+  --shadow-lg: 0 10px 20px -6px rgba(16,24,40,.07), 0 28px 56px -10px rgba(16,24,40,.14);
+  --shadow-xl: 0 18px 36px -10px rgba(16,24,40,.12), 0 44px 88px -14px rgba(16,24,40,.22);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   2. Typography — stronger, tighter display headings + a gradient accent
+      on the greeting name.
+   ───────────────────────────────────────────────────────────────────── */
+.hero h2, .page-head h1 { font-weight: 900; text-wrap: balance; }
+.hero h2 { letter-spacing: -.7px; }
+.section-head h3, .modal-head h3 { letter-spacing: -.3px; }
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .hero h2 #heroName {
+    background: linear-gradient(92deg, var(--primary), var(--info) 92%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   3. Card finish — a top-lit "material" edge in dark mode + a coloured
+      ambient ring on hover for the interactive cards.
+   ───────────────────────────────────────────────────────────────────── */
+html[data-theme="dark"] .kpi-card,
+html[data-theme="dark"] .kpi2,
+html[data-theme="dark"] .chart-card,
+html[data-theme="dark"] .glass-panel,
+html[data-theme="dark"] .alert-card,
+html[data-theme="dark"] .live-call,
+html[data-theme="dark"] .tl-card,
+html[data-theme="dark"] .hero {
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.kpi-card:hover, .kpi2:hover, .live-call:hover, .alert-card:hover {
+  box-shadow: var(--shadow-lg), 0 0 0 1px var(--ring);
+}
+.glass-panel:hover { box-shadow: var(--shadow-md), 0 0 0 1px var(--ring); }
+
+/* ─────────────────────────────────────────────────────────────────────
+   4. Accent tiles — turn the soft section / modal / chart icon chips into
+      solid gradient chips with a coloured glow (crisper, more premium).
+   ───────────────────────────────────────────────────────────────────── */
+.section-head h3 .sh-ic,
+.modal-head h3 .mh-ic {
+  background: var(--grad-primary); color: #fff;
+  box-shadow: 0 4px 12px -3px color-mix(in srgb, var(--primary) 55%, transparent);
+}
+.chart-card h4 .cc-ic { box-shadow: 0 3px 9px -2px color-mix(in srgb, var(--primary) 30%, transparent); }
+
+/* ─────────────────────────────────────────────────────────────────────
+   5. Primary buttons — subtle top sheen + a richer hover glow.
+   ───────────────────────────────────────────────────────────────────── */
+/* Lit at the top-start, landing on the role's deep tone. Derived from the role
+   tokens rather than the literal admin blues this used to hardcode — those
+   survived only because no other console loaded this file, and would have
+   turned the manager's violet button and the supervisor's amber one blue. */
+.btn-primary {
+  background-image: linear-gradient(135deg, color-mix(in srgb, var(--primary) 85%, #FFF) 0%, var(--primary-700) 100%);
+  box-shadow: var(--shadow-primary), inset 0 1px 0 rgba(255,255,255,.28);
+}
+.btn-primary:hover {
+  box-shadow: 0 14px 30px -6px color-mix(in srgb, var(--primary) 50%, transparent), inset 0 1px 0 rgba(255,255,255,.32);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   6. Tables (Calls / Users / Customers / Audit) — a premium tinted hover
+      with a leading accent bar and a cleaner header.
+   ───────────────────────────────────────────────────────────────────── */
+.data-table thead th { border-bottom: 1px solid var(--border-strong); }
+.data-table tbody tr { position: relative; }
+.data-table tbody tr::after {
+  content: ""; position: absolute; inset-inline-start: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--primary); opacity: 0; transition: opacity .2s var(--ease);
+}
+.data-table tbody tr:hover::after { opacity: 1; }
+.data-table tbody tr:hover td { background: var(--grad-primary-soft); }
+
+/* ─────────────────────────────────────────────────────────────────────
+   7. Modals — a clear header divider for a more structured, premium feel.
+   ───────────────────────────────────────────────────────────────────── */
+.modal-head { border-bottom: 1px solid var(--border); padding-bottom: 1.1rem; }
+
+/* ─────────────────────────────────────────────────────────────────────
+   8. Motion — a smoother, spring-lifted interaction on the row-level
+      lists (team ranks, org rows, feed items).
+   ───────────────────────────────────────────────────────────────────── */
+.rank-row, .org-row, .feed-item { transition: background .2s var(--ease), transform .25s var(--ease-spring), box-shadow .25s ease, border-color .2s; }
+.org-row:hover { box-shadow: var(--shadow-sm); }
+
+/* ─────────────────────────────────────────────────────────────────────
+   9. Mobile / responsive pass.
+   ───────────────────────────────────────────────────────────────────── */
+@media (max-width: 820px) {
+  .global-search .gs-label { display: none; }
+  .global-search { flex: 0 0 auto; min-width: 44px; justify-content: center; }
+  .global-search .kbd { display: none; }
+}
+@media (max-width: 640px) {
+  .content { padding: 16px 14px; }
+  .hero { padding: 20px; }
+  .kpi-band { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .kpi2-value { font-size: 1.55rem; }
+  .kpi-value { font-size: 2rem; }
+  .section-head { gap: 4px; }
+  .section-head .sh-sub { flex-basis: 100%; }
+  .live-counter .lc-label { display: none; }
+}
+@media (max-width: 420px) {
+  .kpi-band { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Call Monitor · لوحة المدير</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>  <script src="../assets/scm-ui.js"></script>
+  <script src="../assets/scm-charts.js" defer></script>
+  <script src="../assets/scm-table.js" defer></script>
+
+  <!-- Shared admin design system (same UI), reused for visual parity -->
+  <link rel="stylesheet" href="../admin-dashboard/animations.css">
+  <link rel="stylesheet" href="../admin-dashboard/dashboard.css">
+  <link rel="stylesheet" href="../admin-dashboard/components.css">
+  <link rel="stylesheet" href="../admin-dashboard/premium.css">
+
+  <!-- Manager identity — violet accent override -->
+  <style>
+    :root{
+      --primary:#7C3AED; --primary-600:#6D28D9; --primary-700:#5B21B6; --secondary:#6D28D9;
+      --grad-primary:linear-gradient(135deg,#7C3AED 0%,#6D28D9 100%);
+      --grad-primary-soft:linear-gradient(135deg,rgba(124,58,237,.12),rgba(109,40,217,.12));
+      --grad-hero:radial-gradient(1200px 400px at 85% -10%,rgba(109,40,217,.18),transparent 60%),radial-gradient(900px 360px at 0% 0%,rgba(124,58,237,.20),transparent 55%);
+      --shadow-primary:0 10px 24px rgba(124,58,237,.30); --ring:rgba(124,58,237,.16);
+    }
+    html[data-theme="dark"]{
+      --grad-primary-soft:linear-gradient(135deg,rgba(124,58,237,.22),rgba(109,40,217,.22));
+      --grad-hero:radial-gradient(1200px 400px at 85% -10%,rgba(109,40,217,.28),transparent 60%),radial-gradient(900px 360px at 0% 0%,rgba(124,58,237,.26),transparent 55%);
+      --shadow-primary:0 10px 26px rgba(124,58,237,.45); --ring:rgba(139,92,246,.30);
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="طي القائمة"><i class="fas fa-chevron-right"></i></button>
+    <div class="brand">
+      <div class="brand-mark"><i class="fas fa-user-tie"></i></div>
+      <div class="brand-text"><b>Smart Call Monitor</b><small>لوحة المدير</small></div>
+    </div>
+    <nav class="nav">
+      <div class="nav-section-title">الرئيسية</div>
+      <div class="nav-item active" data-nav="view-overview" title="نظرة عامة"><i class="fas fa-gauge-high"></i><span>نظرة عامة</span></div>
+      <div class="nav-section-title">إدارة الوحدة</div>
+      <div class="nav-item" data-nav="view-supervisors" title="المشرفون التابعون"><i class="fas fa-user-gear"></i><span>المشرفون التابعون</span></div>
+      <div class="nav-item" data-nav="view-calls" title="مكالمات الوحدة"><i class="fas fa-phone-volume"></i><span>مكالمات الوحدة</span></div>
+      <div class="nav-item" data-nav="view-customers" title="عملاء الوحدة"><i class="fas fa-building-user"></i><span>عملاء الوحدة</span></div>
+    </nav>
+    <div class="side-foot">
+      <div class="side-user">
+        <div class="admin-avatar" id="sideAvatar">M</div>
+        <div class="side-user-info"><b id="sideName">المدير</b><small id="sideEmail">manager@scm.com</small></div>
+      </div>
+      <button class="side-btn scm-settings-btn" onclick="SCM.openSettings()"><i class="fas fa-gear"></i><span>الإعدادات</span></button>
+      <button class="side-btn danger" id="logoutBtnSide"><i class="fas fa-arrow-right-from-bracket"></i><span>تسجيل خروج</span></button>
+    </div>
+  </aside>
+
+  <div class="shell">
+    <header class="topbar">
+      <div class="topbar-title"><b id="topbarTitle">نظرة عامة</b><small id="topbarDate">—</small></div>
+      <button class="global-search" onclick="SCM.openPalette && SCM.openPalette()" data-scm-noi18n><i class="fas fa-magnifying-glass"></i><span class="gs-label">بحث، تنقّل، أو إجراء…</span><span class="kbd">Ctrl K</span></button>
+      <div class="topbar-spacer"></div>
+      <div class="topbar-actions">
+        <span class="live-counter" title="مكالمات نشطة الآن"><span class="live-dot"></span><b id="liveCount">0</b> <span class="lc-label">مكالمة حيّة</span></span>
+        <button class="btn btn-primary btn-sm" onclick="Manager.openSupervisorModal()"><i class="fas fa-plus"></i> إضافة مشرف</button>
+        <button class="icon-btn" id="themeBtn" onclick="SCM.toggleTheme()" title="السمة"><i class="fas fa-moon"></i></button>
+        <button class="icon-btn" onclick="SCM.openSettings()" title="الإشعارات"><i class="fas fa-bell"></i></button>
+        <button class="profile-chip" id="profileChip"><span class="pc-avatar" id="chipAvatar">M</span><span class="pc-name" id="chipName">المدير<small>مدير</small></span><i class="fas fa-chevron-down" style="font-size:.7rem;color:var(--muted)"></i></button>
+      </div>
+      <div class="profile-menu" id="profileMenu">
+        <div class="pm-head"><span class="pm-av" id="pmAvatar">M</span><div><b id="pmName" style="font-size:.9rem">المدير</b><div class="cell-sub" id="pmEmail"></div></div></div>
+        <div class="pm-item" onclick="SCMDash.openProfileModal()"><i class="fas fa-user-pen"></i> ملفي الشخصي</div>
+        <div class="pm-item" onclick="SCM.openSettings()"><i class="fas fa-gear"></i> الإعدادات</div>
+        <div class="pm-item" onclick="SCM.toggleTheme()"><i class="fas fa-circle-half-stroke"></i> تبديل السمة</div>
+        <div class="pm-sep"></div>
+        <div class="pm-item danger" id="logoutMenuBtn"><i class="fas fa-arrow-right-from-bracket"></i> تسجيل خروج</div>
+      </div>
+    </header>
+
+    <main class="content">
+      <!-- OVERVIEW -->
+      <section class="view active" id="view-overview">
+        <div class="hero"><div class="hero-inner">
+          <div class="hero-left">
+            <span class="hero-eyebrow"><i class="fas fa-wand-magic-sparkles"></i> لوحة قيادة الوحدة</span>
+            <h2>مرحبًا بعودتك، <span id="heroName">المدير</span> <span class="wave">👋</span></h2>
+            <p class="hero-sub">أداء وحدتك ومشرفيك في الوقت الحقيقي.</p>
+            <div class="ai-summary"><div class="ai-orb"><i class="fas fa-robot"></i></div><div class="ai-body"><b>ملخّص الذكاء الاصطناعي</b><p id="aiSummaryText">جارٍ تحليل بيانات الوحدة…</p></div></div>
+          </div>
+          <div class="hero-stats">
+            <div class="hero-stat hs-green"><div class="hs-top"><i class="fas fa-heart-pulse"></i> صحة الوحدة</div><b id="heroHealth">—</b></div>
+            <div class="hero-stat hs-blue"><div class="hs-top"><i class="fas fa-phone-volume"></i> مكالمات اليوم</div><b id="heroCallsToday">—</b></div>
+            <div class="hero-stat hs-green"><div class="hs-top"><i class="fas fa-user-check"></i> موظفون نشطون</div><b id="heroActiveAgents">—</b></div>
+            <div class="hero-stat hs-red"><div class="hs-top"><i class="fas fa-face-frown"></i> مكالمات سلبية</div><b id="heroNegative">—</b></div>
+          </div>
+        </div></div>
+
+        <div class="grid grid-kpi stagger">
+          <div class="kpi-card kc-violet"><div class="kpi-top"><div><div class="kpi-label">المشرفون التابعون</div><div class="kpi-value" id="kpiSupervisors">—</div></div><div class="kpi-ic"><i class="fas fa-user-gear"></i></div></div><div class="kpi-foot"><span class="kpi-trend flat" id="kpiSupervisorsTrend">—</span></div><div class="kpi-spark" id="sparkSup"></div></div>
+          <div class="kpi-card kc-blue"><div class="kpi-top"><div><div class="kpi-label">موظفو الوحدة</div><div class="kpi-value" id="kpiAgents">—</div></div><div class="kpi-ic"><i class="fas fa-headset"></i></div></div><div class="kpi-foot"><span class="kpi-trend flat" id="kpiAgentsTrend">—</span></div><div class="kpi-spark" id="sparkAgents"></div></div>
+          <div class="kpi-card kc-green"><div class="kpi-top"><div><div class="kpi-label">مكالمات الوحدة</div><div class="kpi-value" id="kpiCalls">—</div></div><div class="kpi-ic"><i class="fas fa-phone-volume"></i></div></div><div class="kpi-foot"><span class="kpi-trend flat" id="kpiCallsTrend">—</span><span class="kpi-period">آخر 7 أيام</span></div><div class="kpi-spark" id="sparkCalls"></div></div>
+          <div class="kpi-card kc-amber"><div class="kpi-top"><div><div class="kpi-label">عملاء الوحدة</div><div class="kpi-value" id="kpiCustomers">—</div></div><div class="kpi-ic"><i class="fas fa-address-book"></i></div></div><div class="kpi-foot"><span class="kpi-trend flat" id="kpiCustomersTrend">—</span></div><div class="kpi-spark" id="sparkCust"></div></div>
+        </div>
+
+        <div class="section" style="margin-top:var(--s-5)">
+          <div class="section-head"><h3><span class="sh-ic"><i class="fas fa-chart-line"></i></span> التحليلات المتقدمة</h3><span class="sh-sub">رؤى مرئية لبيانات الوحدة</span></div>
+          <div class="analytics-grid">
+            <div class="chart-card span-2"><h4><span class="cc-ic"><i class="fas fa-chart-area"></i></span> حجم المكالمات</h4><div class="cc-sub">آخر 14 يومًا</div><div class="chart-box"><canvas id="chartCallsDay"></canvas></div></div>
+            <div class="chart-card"><h4><span class="cc-ic"><i class="fas fa-face-smile"></i></span> توزيع المشاعر</h4><div class="cc-sub">إيجابي · محايد · سلبي</div><div class="chart-box"><canvas id="chartSentiment"></canvas></div></div>
+            <div class="chart-card"><h4><span class="cc-ic"><i class="fas fa-tags"></i></span> أنواع المكالمات</h4><div class="cc-sub">حسب التصنيف</div><div class="chart-box"><canvas id="chartTypes"></canvas></div></div>
+            <div class="chart-card span-2"><h4><span class="cc-ic"><i class="fas fa-ranking-star"></i></span> أداء المشرفين</h4><div class="cc-sub">متوسط الجودة لكل وحدة</div><div class="chart-box tall"><canvas id="chartScores"></canvas></div></div>
+          </div>
+        </div>
+
+        <div class="section"><div class="grid grid-split">
+          <div class="glass-panel"><div class="section-head" style="margin-bottom:var(--s-3)"><h3 style="font-size:1rem"><span class="sh-ic"><i class="fas fa-tower-broadcast"></i></span> المراقبة اللحظية</h3><span class="sh-sub" id="liveSubLabel">أحدث المكالمات</span></div><div class="live-grid" id="liveCallsGridMini"></div></div>
+          <div class="glass-panel"><div class="section-head" style="margin-bottom:var(--s-2)"><h3 style="font-size:1rem"><span class="sh-ic"><i class="fas fa-wave-square"></i></span> النشاط الحيّ</h3></div><div class="feed" id="activityFeed"></div></div>
+        </div></div>
+
+        <div class="section">
+          <div class="section-head"><h3><span class="sh-ic"><i class="fas fa-trophy"></i></span> ترتيب المشرفين</h3><span class="sh-sub">حسب متوسط الجودة</span></div>
+          <div class="team-grid">
+            <div class="glass-panel"><div class="spread" style="margin-bottom:12px"><b style="font-size:.92rem"><i class="fas fa-arrow-trend-up" style="color:var(--success)"></i> الأعلى أداءً</b></div><div id="topSupervisors"></div></div>
+            <div class="glass-panel"><div class="spread" style="margin-bottom:12px"><b style="font-size:.92rem"><i class="fas fa-arrow-trend-down" style="color:var(--danger)"></i> بحاجة لمتابعة</b></div><div id="bottomSupervisors"></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SUPERVISORS -->
+      <section class="view" id="view-supervisors">
+        <div class="page-head"><div><h1>المشرفون التابعون</h1><p>إنشاء وإدارة مشرفي وحدتك.</p></div><div class="flex gap-12"><button class="btn btn-ghost" onclick="Manager.exportSupervisors()"><i class="fas fa-file-csv"></i> تصدير</button><button class="btn btn-primary" onclick="Manager.openSupervisorModal()"><i class="fas fa-plus"></i> إضافة مشرف</button></div></div>
+        <div class="glass-panel">
+          <div class="toolbar"><div class="search-field"><i class="fas fa-magnifying-glass"></i><input id="supSearch" placeholder="بحث بالاسم أو البريد…"></div></div>
+          <div class="table-wrap"><table class="data-table"><thead><tr><th>المشرف</th><th>البريد</th><th>عدد الوكلاء</th><th>المكالمات</th><th>متوسط الأداء</th><th>الحالة</th><th data-nosort>إجراءات</th></tr></thead><tbody id="supervisorsTable"></tbody></table></div>
+        </div>
+      </section>
+
+      <!-- CALLS -->
+      <section class="view" id="view-calls">
+        <div class="page-head"><div><h1>مكالمات الوحدة</h1><p>كل مكالمات موظفي وحدتك.</p></div><button class="btn btn-ghost" onclick="Manager.exportCalls()"><i class="fas fa-file-csv"></i> تصدير CSV</button></div>
+        <div class="glass-panel">
+          <div class="toolbar">
+            <div class="search-field"><i class="fas fa-magnifying-glass"></i><input id="callSearch" placeholder="بحث بالوكيل أو العميل…"></div>
+            <select class="mini-select" id="agentFilter"><option value="">— كل الموظفين —</option></select>
+            <div class="chips" id="callSentChips"><button class="chip on" data-sent="all">الكل</button><button class="chip" data-sent="positive">إيجابي</button><button class="chip" data-sent="neutral">محايد</button><button class="chip" data-sent="negative">سلبي</button></div>
+          </div>
+          <div class="table-wrap"><table class="data-table"><thead><tr><th>الوكيل</th><th>العميل</th><th>رقم العميل</th><th>وقت البدء</th><th>المدة</th><th>التصنيف</th><th>المشاعر</th><th>التقييم</th></tr></thead><tbody id="callsTable"></tbody></table></div>
+        </div>
+      </section>
+
+      <!-- CUSTOMERS -->
+      <section class="view" id="view-customers">
+        <div class="page-head"><div><h1>عملاء الوحدة</h1><p>العملاء الذين تعامل معهم فريقك.</p></div><button class="btn btn-ghost" onclick="Manager.exportCustomers()"><i class="fas fa-file-csv"></i> تصدير</button></div>
+        <div class="glass-panel">
+          <div class="toolbar"><div class="search-field"><i class="fas fa-magnifying-glass"></i><input id="custSearch" placeholder="بحث بالاسم أو الهاتف…"></div></div>
+          <div class="table-wrap"><table class="data-table"><thead><tr><th>العميل</th><th>رقم الهاتف</th><th>البريد</th><th>الموظف المسؤول</th><th>عدد المكالمات</th><th></th></tr></thead><tbody id="customersTable"></tbody></table></div>
+        </div>
+      </section>
+
+      <!-- PROFILE DRILL-DOWN -->
+      <section class="view" id="view-profile"></section>
+    </main>
+  </div>
+</div>
+
+<!-- Create supervisor -->
+<div class="modal-overlay" id="supervisorModal">
+  <div class="modal">
+    <div class="modal-head"><h3><span class="mh-ic"><i class="fas fa-user-plus"></i></span> إضافة مشرف جديد</h3><button class="modal-close" onclick="Manager.closeSupervisorModal()"><i class="fas fa-times"></i></button></div>
+    <div class="form-grid">
+      <div class="input-group"><label>الاسم الكامل</label><input type="text" id="supFullName" placeholder="مثال: ليلى حسن"></div>
+      <div class="input-group"><label>اسم المستخدم</label><input type="text" id="supUsername" placeholder="layla.h"></div>
+      <div class="input-group"><label>البريد الإلكتروني</label><input type="email" id="supEmail" placeholder="layla@scm.com"></div>
+      <div class="input-group"><label>رقم الهاتف</label><input type="text" id="supPhone" placeholder="05xxxxxxxx"></div>
+      <div class="input-group"><label>كلمة المرور</label><input type="password" id="supPassword" placeholder="6 أحرف على الأقل"></div>
+      <div class="input-group"><label>الحالة</label><select id="supStatus"><option value="true">نشط</option><option value="false">غير نشط</option></select></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-soft" onclick="Manager.closeSupervisorModal()">إلغاء</button><button class="btn btn-primary" id="createSupervisorBtn"><i class="fas fa-floppy-disk"></i> حفظ المشرف</button></div>
+  </div>
+</div>
+
+<!-- Call detail -->
+<div class="modal-overlay" id="callModal">
+  <div class="modal lg">
+    <div class="modal-head"><h3><span class="mh-ic"><i class="fas fa-file-waveform"></i></span> تفاصيل المكالمة والتحليل</h3>
+      <div class="flex gap-12"><button class="btn btn-ghost btn-sm" onclick="SCMDash.downloadCallPdf()"><i class="fas fa-file-pdf"></i> تقرير PDF</button><button class="modal-close" onclick="SCMDash.closeCallDetail()"><i class="fas fa-times"></i></button></div>
+    </div>
+    <div id="callDetailContent"><div class="cd-empty"><span class="spinner"></span> جارٍ التحميل…</div></div>
+  </div>
+</div>
+
+<!-- My profile -->
+<div class="modal-overlay" id="profileModal">
+  <div class="modal">
+    <div class="modal-head"><h3><span class="mh-ic"><i class="fas fa-user-pen"></i></span> ملفي الشخصي</h3><button class="modal-close" onclick="SCMDash.closeProfileModal()"><i class="fas fa-times"></i></button></div>
+    <div class="form-grid">
+      <div class="input-group"><label>الاسم الكامل</label><input type="text" id="myFullName"></div>
+      <div class="input-group"><label>رقم الهاتف</label><input type="text" id="myPhone" placeholder="05xxxxxxxx"></div>
+      <div class="input-group" style="grid-column:1/-1"><label>البريد الإلكتروني (غير قابل للتعديل)</label><input type="email" id="myEmail" disabled style="opacity:.6"></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-primary" id="saveProfileBtn"><i class="fas fa-floppy-disk"></i> حفظ البيانات</button></div>
+    <div class="modal-head" style="margin-top:1.6rem"><h3 style="font-size:1.05rem"><span class="mh-ic"><i class="fas fa-shield-halved"></i></span> الأمان</h3></div>
+    <div class="form-grid">
+      <div class="input-group"><label>كلمة المرور الحالية</label><input type="password" id="curPass" placeholder="******"></div>
+      <div class="input-group"><label>كلمة المرور الجديدة</label><input type="password" id="newPass" placeholder="6 أحرف على الأقل"></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-soft" id="changePassBtn"><i class="fas fa-key"></i> تحديث كلمة المرور</button></div>
+  </div>
+</div>
+
+<script src="../assets/scm-dash.js"></script>
+<script src="manager.js"></script>
+</body>
+</html>
